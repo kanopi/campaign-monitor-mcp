@@ -1,5 +1,5 @@
 {
-  "name": "campaign-monitor-mcp",
+  "name": "@kanopi/campaign-monitor-mcp",
   "version": "1.0.0",
   "description": "Model Context Protocol server exposing the full Campaign Monitor (createsend) v3.3 API",
   "type": "module",

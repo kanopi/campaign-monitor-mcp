@@ -20,26 +20,26 @@ with an auto-refreshing access token. Runs locally over stdio.
 
 ## Install from npm
 
-Once published, you don't need to clone or build — run it straight from npm with `npx`,
-which is also how you point an MCP client at it:
+You don't need to clone or build — run it straight from npm with `npx`, which is also how
+you point an MCP client at it (`-y` auto-confirms the one-time download):
 
 ```json
 {
   "mcpServers": {
     "campaign-monitor": {
       "command": "npx",
-      "args": ["-y", "campaign-monitor-mcp"],
+      "args": ["-y", "@kanopi/campaign-monitor-mcp"],
       "env": { "CM_API_KEY": "your-api-key" }
     }
   }
 }
 ```
 
-Or install the CLI globally: `npm install -g campaign-monitor-mcp`, then the
+Or install the CLI globally: `npm install -g @kanopi/campaign-monitor-mcp`, then the
 `campaign-monitor-mcp` command is available on your PATH.
 
-The rest of this README covers running from source (clone + build), which is what you want
-for development.
+See [Registering the MCP server](#registering-the-mcp-server) for per-client setup. To run
+from source instead (for development), see [Running from source](#running-from-source).
 
 ## Requirements
 
@@ -107,17 +107,12 @@ npm run inspector    # build + open the MCP Inspector against the server
 
 ## Registering the MCP server
 
-The server is a local **stdio** process: an MCP client launches `node dist/index.js` and
-talks to it over stdin/stdout. You register it once per client by pointing the client at
-the built entry file and supplying credentials as environment variables.
+The server is a local **stdio** process: an MCP client launches it with `npx` and talks to
+it over stdin/stdout. You register it once per client by pointing the client at the package
+and supplying credentials as environment variables.
 
-**Before registering:** run `npm run build` (creates `dist/`). Note the **absolute path** to
-the project — every client needs it:
-
-```bash
-npm run build
-pwd   # copy this; your entry point is <that path>/dist/index.js
-```
+**The only prerequisite is Node.js 20+.** `npx -y @kanopi/campaign-monitor-mcp` downloads
+and runs the package on first use (and caches it) — no clone, no build, no paths to manage.
 
 The credentials block is the same for every client — just your API key:
 
@@ -143,8 +138,8 @@ Edit `claude_desktop_config.json` (create it if missing):
 {
   "mcpServers": {
     "campaign-monitor": {
-      "command": "node",
-      "args": ["/absolute/path/to/campaign-monitor-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@kanopi/campaign-monitor-mcp"],
       "env": {
         "CM_API_KEY": "your-api-key"
       }
@@ -163,7 +158,7 @@ Register with one command (no manual JSON editing):
 ```bash
 claude mcp add campaign-monitor \
   --env CM_API_KEY=your-api-key \
-  -- node /absolute/path/to/campaign-monitor-mcp/dist/index.js
+  -- npx -y @kanopi/campaign-monitor-mcp
 ```
 
 Add `--scope user` to make it available in every project (default is the current project
@@ -179,8 +174,8 @@ MCP config (e.g. Cursor's `~/.cursor/mcp.json` or a project `.cursor/mcp.json`):
 {
   "mcpServers": {
     "campaign-monitor": {
-      "command": "node",
-      "args": ["/absolute/path/to/campaign-monitor-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "@kanopi/campaign-monitor-mcp"],
       "env": {
         "CM_API_KEY": "your-api-key"
       }
@@ -206,13 +201,41 @@ Before wiring into a client, confirm the server boots and lists tools with the I
 npm run inspector   # opens the MCP Inspector against node dist/index.js
 ```
 
+### Running from source
+
+For development (or to run a local build instead of the published package), clone the repo,
+install, and point the client at the built entry file with `node`:
+
+```bash
+git clone https://github.com/kanopi/campaign-monitor-mcp.git
+cd campaign-monitor-mcp
+npm install        # builds via the prepare hook
+```
+
+Then use this config shape instead of the `npx` one above (use the **absolute** path):
+
+```json
+{
+  "mcpServers": {
+    "campaign-monitor": {
+      "command": "node",
+      "args": ["/absolute/path/to/campaign-monitor-mcp/dist/index.js"],
+      "env": { "CM_API_KEY": "your-api-key" }
+    }
+  }
+}
+```
+
 ### Troubleshooting
 
 - **"No Campaign Monitor credentials found"** — the `env` block is missing/misspelled, or
-  `.env` isn't being read. Provide credentials in the client config's `env`.
-- **Server doesn't appear / "failed to start"** — use an **absolute** path to
-  `dist/index.js`, ensure you ran `npm run build`, and that `node` is on the client's PATH
-  (use an absolute node path if needed, e.g. `/usr/local/bin/node`).
+  (from source) `.env` isn't being read. Provide credentials in the client config's `env`.
+- **Server doesn't appear / "failed to start"** — ensure `node` (v20+) is on the client's
+  PATH; some GUI clients don't inherit your shell PATH, so use an absolute path to `npx`
+  (run `which npx`) or to `node`. From source, also confirm you ran `npm install`/`npm run
+  build` and used an **absolute** path to `dist/index.js`.
+- **`npx` can't find the package** — confirm the scoped name `@kanopi/campaign-monitor-mcp`
+  is spelled correctly and published; clear a stale cache with `npx clear-npx-cache`.
 - **401 / authentication errors at runtime** — using an API key: confirm it's correct and
   not revoked (and that an account-level key is used for `account`/`clients` tools). Using
   OAuth: the refresh token expired or was revoked — re-run `npm run auth`.
