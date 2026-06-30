@@ -4,8 +4,8 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes 
 Campaign Monitor (createsend) v3.3 API** — 117 tools across 9 resource categories — to
 MCP-compatible clients like Claude Desktop, Claude Code, and the MCP Inspector.
 
-Authenticates via **OAuth 2.0** with an auto-refreshing access token (API-key auth
-supported as a fallback). Runs locally over stdio.
+Authenticates with a Campaign Monitor **API key** (simplest, recommended) or via **OAuth 2.0**
+with an auto-refreshing access token. Runs locally over stdio.
 
 ## Features
 
@@ -13,17 +13,16 @@ supported as a fallback). Runs locally over stdio.
   templates, transactional email, and journeys. Includes destructive/sending operations
   (send campaign, send transactional email, delete) — these are flagged with ⚠️ in their
   descriptions and tagged with the MCP `destructiveHint` annotation.
-- **OAuth with token rotation** — Campaign Monitor rotates refresh tokens on every refresh.
-  The server persists the latest token to a local store (`~/.campaign-monitor-mcp/tokens.json`)
-  so it keeps working across restarts.
+- **Simple auth** — drop in an API key and go. OAuth 2.0 is available as an optional
+  alternative (with automatic refresh-token rotation persisted to a local store).
 - **Category filtering** — expose only the categories you need via `CM_ENABLED_CATEGORIES`
   to keep the tool surface small.
 
 ## Requirements
 
 - Node.js 20+
-- A Campaign Monitor account, and an [OAuth application](https://www.campaignmonitor.com/api/v3-3/getting-started/#oauthflow)
-  (Client ID + Client Secret) **or** an API key.
+- A Campaign Monitor account and an **API key** (Account settings → API keys).
+  OAuth credentials are an optional alternative — see [Using OAuth instead](#using-oauth-instead-optional).
 
 ## Install & build
 
@@ -31,26 +30,6 @@ supported as a fallback). Runs locally over stdio.
 npm install      # also builds via the prepare hook
 npm run build    # or build manually
 ```
-
-## Register a Campaign Monitor OAuth application
-
-To use OAuth you first need a **Client ID** and **Client Secret** from Campaign Monitor.
-These are issued when you register an OAuth application in your account:
-
-1. Log in to your [Campaign Monitor account](https://login.createsend.com/).
-2. In the top navigation, open **Integrations**. (You may need to select a client first.)
-3. In the right-hand sidebar, choose **OAuth Registration**.
-4. Fill in the registration form:
-   - **Application name** — e.g. `Campaign Monitor MCP`.
-   - **Description** — a short summary (e.g. "Local MCP server for API access").
-   - **Redirect / Callback URI** — set this to **`http://127.0.0.1:53682/callback`**.
-     It must match `CM_REDIRECT_URI` in your `.env` exactly, or the `npm run auth` step
-     will fail. (If you change one, change both.)
-5. Submit. Campaign Monitor shows your **Client ID** and **Client Secret** — copy both
-   into `.env` as `CM_CLIENT_ID` and `CM_CLIENT_SECRET`. Treat the secret like a password.
-
-> Don't want to use OAuth? You can skip this entirely and use an API key instead — see
-> [API key (fallback)](#api-key-fallback) below.
 
 ## Configure
 
@@ -60,25 +39,41 @@ Copy the example env file and fill it in:
 cp .env.example .env
 ```
 
-### OAuth (recommended)
+### API key (recommended)
 
-1. Make sure you've [registered an OAuth application](#register-a-campaign-monitor-oauth-application)
-   and put `CM_CLIENT_ID` and `CM_CLIENT_SECRET` in `.env`.
-2. Confirm `CM_REDIRECT_URI` in `.env` matches the redirect URI you registered
-   (default `http://127.0.0.1:53682/callback`).
-3. Run the one-time bootstrap:
+1. In Campaign Monitor, click your **account name** (top-right) → **Account settings** →
+   **API keys**, and copy the **API key**.
+   - The **account-level** key (top-level account settings) can access every client, so
+     the `account` and `clients` tools work. A **client-level** key (inside a specific
+     client's settings) is scoped to just that client.
+2. Set it in `.env` — this is the only credential you need:
+
+   ```
+   CM_API_KEY=your-api-key-here
+   ```
+
+   Leave the OAuth variables blank. The server uses the API key automatically whenever no
+   OAuth refresh token is present.
+
+### Using OAuth instead (optional)
+
+OAuth lets the server use short-lived, scoped, revocable tokens instead of a static key.
+It takes more setup. Skip this entirely if you're using an API key.
+
+1. **Register an OAuth application.** Log in, open **Integrations** in the top nav (select a
+   client first if prompted), then **OAuth Registration** in the right sidebar. Fill in an
+   application name, a description, and set the **Redirect / Callback URI** to
+   **`http://127.0.0.1:53682/callback`** (it must match `CM_REDIRECT_URI` exactly). Submit
+   to get a **Client ID** and **Client Secret**.
+2. Put `CM_CLIENT_ID` and `CM_CLIENT_SECRET` in `.env`.
+3. Run the one-time bootstrap — it opens your browser, you approve the scopes, and a refresh
+   token is stored (and printed so you can paste `CM_REFRESH_TOKEN` into `.env` as a backup):
 
    ```bash
    npm run auth
    ```
 
-   This opens your browser, you approve the requested scopes, and a refresh token is stored
-   (and printed so you can also paste `CM_REFRESH_TOKEN` into `.env` as a backup seed).
-
-### API key (fallback)
-
-Set `CM_API_KEY` in `.env` (found under **Account Settings → API keys**). Used only if no
-OAuth refresh token is available.
+When all three OAuth variables are present they take precedence over `CM_API_KEY`.
 
 ## Verify
 
@@ -93,29 +88,25 @@ The server is a local **stdio** process: an MCP client launches `node dist/index
 talks to it over stdin/stdout. You register it once per client by pointing the client at
 the built entry file and supplying credentials as environment variables.
 
-**Before registering:** run `npm run build` (creates `dist/`) and `npm run auth` once to
-obtain a refresh token. Note the **absolute path** to the project — every client needs it:
+**Before registering:** run `npm run build` (creates `dist/`). Note the **absolute path** to
+the project — every client needs it:
 
 ```bash
 npm run build
-npm run auth
 pwd   # copy this; your entry point is <that path>/dist/index.js
 ```
 
-The credentials block is the same for every client:
+The credentials block is the same for every client — just your API key:
 
 ```jsonc
 "env": {
-  "CM_CLIENT_ID": "your-client-id",
-  "CM_CLIENT_SECRET": "your-client-secret",
-  "CM_REFRESH_TOKEN": "your-refresh-token"   // from `npm run auth`
+  "CM_API_KEY": "your-api-key"
 }
 ```
 
-> Tip: you can omit `env` entirely if you keep credentials in the project's `.env` file —
-> the server loads it on startup. The refresh token is also cached in
-> `~/.campaign-monitor-mcp/tokens.json` (override with `CM_TOKEN_STORE`) and rotated
-> automatically, so once `npm run auth` has run, the stored token alone is enough.
+> Tip: you can omit `env` entirely if you keep `CM_API_KEY` in the project's `.env` file —
+> the server loads it on startup. (Using OAuth instead? Put `CM_CLIENT_ID`,
+> `CM_CLIENT_SECRET`, and `CM_REFRESH_TOKEN` in the `env` block instead of `CM_API_KEY`.)
 
 ### Claude Desktop
 
@@ -132,9 +123,7 @@ Edit `claude_desktop_config.json` (create it if missing):
       "command": "node",
       "args": ["/absolute/path/to/campaign-monitor-mcp/dist/index.js"],
       "env": {
-        "CM_CLIENT_ID": "your-client-id",
-        "CM_CLIENT_SECRET": "your-client-secret",
-        "CM_REFRESH_TOKEN": "your-refresh-token"
+        "CM_API_KEY": "your-api-key"
       }
     }
   }
@@ -150,9 +139,7 @@ Register with one command (no manual JSON editing):
 
 ```bash
 claude mcp add campaign-monitor \
-  --env CM_CLIENT_ID=your-client-id \
-  --env CM_CLIENT_SECRET=your-client-secret \
-  --env CM_REFRESH_TOKEN=your-refresh-token \
+  --env CM_API_KEY=your-api-key \
   -- node /absolute/path/to/campaign-monitor-mcp/dist/index.js
 ```
 
@@ -172,9 +159,7 @@ MCP config (e.g. Cursor's `~/.cursor/mcp.json` or a project `.cursor/mcp.json`):
       "command": "node",
       "args": ["/absolute/path/to/campaign-monitor-mcp/dist/index.js"],
       "env": {
-        "CM_CLIENT_ID": "your-client-id",
-        "CM_CLIENT_SECRET": "your-client-secret",
-        "CM_REFRESH_TOKEN": "your-refresh-token"
+        "CM_API_KEY": "your-api-key"
       }
     }
   }
@@ -205,20 +190,21 @@ npm run inspector   # opens the MCP Inspector against node dist/index.js
 - **Server doesn't appear / "failed to start"** — use an **absolute** path to
   `dist/index.js`, ensure you ran `npm run build`, and that `node` is on the client's PATH
   (use an absolute node path if needed, e.g. `/usr/local/bin/node`).
-- **401 / token errors at runtime** — the refresh token expired or was revoked; re-run
-  `npm run auth`.
+- **401 / authentication errors at runtime** — using an API key: confirm it's correct and
+  not revoked (and that an account-level key is used for `account`/`clients` tools). Using
+  OAuth: the refresh token expired or was revoked — re-run `npm run auth`.
 
 ## Environment variables
 
 | Variable | Purpose |
 | --- | --- |
-| `CM_CLIENT_ID` / `CM_CLIENT_SECRET` | OAuth application credentials |
-| `CM_REFRESH_TOKEN` | Seed refresh token (from `npm run auth`) |
+| `CM_API_KEY` | **API key (recommended).** Used unless OAuth credentials are present. |
+| `CM_ENABLED_CATEGORIES` | Comma-separated list to limit exposed tool categories |
+| `CM_CLIENT_ID` / `CM_CLIENT_SECRET` | OAuth application credentials (optional) |
+| `CM_REFRESH_TOKEN` | OAuth seed refresh token, from `npm run auth` (optional) |
 | `CM_REDIRECT_URI` | OAuth redirect URI (default `http://127.0.0.1:53682/callback`) |
 | `CM_SCOPES` | Scopes requested during `npm run auth` |
-| `CM_API_KEY` | Fallback API key (HTTP Basic auth) |
-| `CM_TOKEN_STORE` | Path to the token store file |
-| `CM_ENABLED_CATEGORIES` | Comma-separated list to limit exposed tool categories |
+| `CM_TOKEN_STORE` | Path to the OAuth token store file |
 
 ## Tool catalog
 
