@@ -1,9 +1,31 @@
 {
   "name": "campaign-monitor-mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Model Context Protocol server exposing the full Campaign Monitor (createsend) v3.3 API",
   "type": "module",
   "license": "MIT",
+  "author": "Sean Dietrich<sean@kanopi.com>",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "modelcontextprotocol",
+    "campaign-monitor",
+    "createsend",
+    "email-marketing",
+    "claude",
+    "ai"
+  ],
+  "homepage": "https://github.com/kanopi/campaign-monitor-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kanopi/campaign-monitor-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kanopi/campaign-monitor-mcp/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "campaign-monitor-mcp": "dist/index.js"
   },

@@ -18,6 +18,29 @@ with an auto-refreshing access token. Runs locally over stdio.
 - **Category filtering** — expose only the categories you need via `CM_ENABLED_CATEGORIES`
   to keep the tool surface small.
 
+## Install from npm
+
+Once published, you don't need to clone or build — run it straight from npm with `npx`,
+which is also how you point an MCP client at it:
+
+```json
+{
+  "mcpServers": {
+    "campaign-monitor": {
+      "command": "npx",
+      "args": ["-y", "campaign-monitor-mcp"],
+      "env": { "CM_API_KEY": "your-api-key" }
+    }
+  }
+}
+```
+
+Or install the CLI globally: `npm install -g campaign-monitor-mcp`, then the
+`campaign-monitor-mcp` command is available on your PATH.
+
+The rest of this README covers running from source (clone + build), which is what you want
+for development.
+
 ## Requirements
 
 - Node.js 20+
