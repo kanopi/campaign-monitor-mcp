@@ -1,4 +1,4 @@
-# Campaign Monitor MCP Server
+# 📣 Campaign Monitor MCP Server
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the **full
 Campaign Monitor (createsend) v3.3 API** — 117 tools across 9 resource categories — to
