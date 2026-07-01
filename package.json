@@ -4,7 +4,7 @@
   "description": "Model Context Protocol server exposing the full Campaign Monitor (createsend) v3.3 API",
   "type": "module",
   "license": "MIT",
-  "author": "Sean Dietrich<sean@kanopi.com>",
+  "author": "Sean Dietrich <sean@kanopi.com>",
   "keywords": [
     "mcp",
     "model-context-protocol",
